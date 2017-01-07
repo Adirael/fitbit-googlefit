@@ -56,6 +56,31 @@ class OAuth2Server:
         threading.Timer(1, webbrowser.open, args=(url,)).start()
         cherrypy.quickstart(self)
 
+    def headless_authorize(self):
+        """
+        Display the authorization url for the user to copy and paste into
+        a local browser
+        """
+
+        url, _ = self.oauth.authorize_token_url(redirect_uri=self.redirect_uri)
+
+        print("Paste the following URL into a local browser, you'll be asked access")
+        print("to your Fitbit health data and be redirected to a http://localhost")
+        print("URL that will throw an error")
+        print(url)
+
+        code = input("Paste code argument from redirected URL: ")
+
+        if code:
+            try:
+                self.oauth.fetch_access_token(code, self.redirect_uri)
+            except MissingTokenError:
+                print("Missing access token parameter. Check your client_secret parameter")
+            except MismatchingStateError:
+                print("CSRF Warning! Mismatching state")
+        else:
+            print("No access code given")
+
     @cherrypy.expose
     def index(self, state, code=None, error=None):
         """
@@ -88,22 +113,26 @@ class OAuth2Server:
         if cherrypy.engine.state == cherrypy.engine.states.STARTED:
             threading.Timer(1, cherrypy.engine.exit).start()
 
-
 def main():
     parser = argparse.ArgumentParser(description='Authenticate your Fitbit App.')
     parser.add_argument('client_id', help='The Client ID of your Fitbit App')
     parser.add_argument('client_secret', help='The Client Secret of your Fitbit App')
+    parser.add_argument('--headless', action='store_true')
 
     args = parser.parse_args()
-
     server = OAuth2Server(args.client_id, args.client_secret)
-    server.browser_authorize()
+
+    if args.headless:
+        server.headless_authorize()
+    else:
+        server.browser_authorize()
 
     credentials = dict(
         client_id=args.client_id,
         client_secret=args.client_secret,
         access_token=server.oauth.token['access_token'],
         refresh_token=server.oauth.token['refresh_token'])
+        
     json.dump(credentials, open('fitbit.json', 'w'))
 
 if __name__ == '__main__':
