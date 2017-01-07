@@ -25,6 +25,7 @@ import threading
 import traceback
 import webbrowser
 import json
+import argparse
 
 from base64 import b64encode
 import cherrypy
@@ -89,18 +90,18 @@ class OAuth2Server:
 
 
 def main():
-    if not (len(sys.argv) == 3):
-        print("Arguments 'client ID', 'client secret' are required")
-        sys.exit(1)
-    client_id = sys.argv[1]
-    client_secret = sys.argv[2]
+    parser = argparse.ArgumentParser(description='Authenticate your Fitbit App.')
+    parser.add_argument('client_id', help='The Client ID of your Fitbit App')
+    parser.add_argument('client_secret', help='The Client Secret of your Fitbit App')
 
-    server = OAuth2Server(client_id, client_secret)	
+    args = parser.parse_args()
+
+    server = OAuth2Server(args.client_id, args.client_secret)
     server.browser_authorize()
 
     credentials = dict(
-        client_id=client_id,
-        client_secret=client_secret,
+        client_id=args.client_id,
+        client_secret=args.client_secret,
         access_token=server.oauth.token['access_token'],
         refresh_token=server.oauth.token['refresh_token'])
     json.dump(credentials, open('fitbit.json', 'w'))
